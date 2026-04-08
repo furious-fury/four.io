@@ -1,101 +1,101 @@
 # four.io
 
-Connect 4 against the CPU (Easy / Medium / Hard) with a verified global leaderboard. Monorepo: **Bun** workspaces, **Vite + React** frontend, **Express + Prisma + PostgreSQL** API, shared **`@four.io/game-logic`** for board rules, CPU logic, and server-side replay validation.
+Connect 4 against the CPU (Easy / Medium / Hard) with a verified global leaderboard. This repo is a **single Next.js 15** app at the **repository root** (App Router): UI and `/api/*` routes together, **Prisma + PostgreSQL** (e.g. Supabase). Rules, CPU, and verification live in **`game-logic/`** and ship in the client bundle (imported via `@/game-logic`).
 
 ## Features
 
 - **Play:** Column controls with full-column feedback, disc drop animation, keyboard **1–7** / numpad to drop, optional **hints** (Easy / Medium), **undo last human+CPU pair** (disabled while the CPU is thinking or after the game ends).
-- **Audio:** Drop / win / lose cues (Web Audio); mute control in the header; preference stored in `localStorage`.
+- **Audio:** Drop / win / lose cues (Web Audio); mute in the header; preference in `localStorage`.
 - **Home:** Local W–L–D tallies per difficulty (this browser only).
-- **Hall of Fame:** Top 50 scores; React Query caching; filters **All / Easy / Medium / Hard** (ranks are within the selected filter); row highlight for the last submitted display name (`sessionStorage`).
-- **Replay:** Read-only board from the URL — `/replay?moves=0,1,2` (optional `&seed=` for display). Invalid sequences show an error. Scores still require server verification.
-- **API hardening:** Zod validation for score bodies and leaderboard query params; `X-Request-Id` on responses; structured error logging with request id.
+- **Hall of Fame:** Top 50 scores; React Query; filters **All / Easy / Medium / Hard** (ranks within the selected filter); row highlight for the last submitted display name (`sessionStorage`).
+- **Replay:** Read-only board from `/replay?moves=0,1,2` (optional `&seed=`). Invalid sequences show an error. Scores still require server verification.
+- **API:** Zod on bodies and query params; `X-Request-Id` on responses. Score and game starts use **Upstash Redis** rate limits when `UPSTASH_*` is set (skipped if unset).
 
 ## Prerequisites
 
 - [Bun](https://bun.sh/)
-- Docker (optional, for local PostgreSQL)
+- [Docker](https://docs.docker.com/get-docker/) (optional, for local PostgreSQL)
 
 ## Setup
 
+Install dependencies (runs `prisma generate` via `postinstall`):
+
 ```bash
 bun install
-cd game-logic && bun run build
 ```
 
-Start PostgreSQL:
+**Database:** Either point `.env` at an existing Postgres instance, or start the bundled compose stack (matches the defaults in [`.env.example`](.env.example)):
 
 ```bash
 docker compose up -d
 ```
 
-Create `server/.env` from `.env.example` and run migrations.
-
-Prisma ORM 7 reads connection URLs from [`server/prisma.config.ts`](server/prisma.config.ts) (not from `schema.prisma`). For hosts like Supabase with a **pooler** URL plus a **direct** URL, set `DATABASE_URL` for the app and `DIRECT_URL` for migrations; otherwise a single `DATABASE_URL` is enough.
+Configure Prisma URLs in the repo root:
 
 ```bash
-cd server
-cp ../.env.example .env
-# edit DATABASE_URL / DIRECT_URL as needed
+cp .env.example .env
+# set DATABASE_URL (and DIRECT_URL when using a pooler)
+```
+
+Prisma reads [`prisma.config.ts`](prisma.config.ts). On Supabase, use the **pooler** URL as `DATABASE_URL` and a **direct** URL as `DIRECT_URL` for migrations.
+
+```bash
 bun run db:generate
 bunx prisma migrate deploy
 ```
 
-## Development
+(`bun run db:migrate` is for interactive `migrate dev` during schema work; `db:push` is available for quick local iteration.)
 
-From the repo root, start **API + web** together (recommended):
+## Scripts
 
-```bash
-bun run dev
-```
-
-This runs the API on port **5005** (override with `PORT` in `server/.env`) and Vite on **5173** (Vite proxies `/api` to the API). Visiting `http://localhost:5005/` should return JSON with `"service":"four.io"` — if you see `Cannot GET` instead, another process may be using that port, or the API failed to start (check `DATABASE_URL` in `server/.env`).
-
-Alternatively, use two terminals: `bun run dev:server` then `bun run dev:client`.
-
-### Environment
-
-| Location | Purpose |
+| Command | Purpose |
 | :--- | :--- |
-| `server/.env` (copy from repo root [`.env.example`](.env.example)) | `DATABASE_URL`, `DIRECT_URL`, `PORT`, `CORS_ORIGIN` |
-| [`client/.env`](client/.env.example) | Optional `VITE_API_URL` when the SPA and API are not same-origin (production or custom dev URLs) |
+| `bun run dev` | Next dev server (Turbopack), default **http://localhost:3000** |
+| `bun run build` | `prisma generate` + production build |
+| `bun run start` | Production server (after `build`) |
+| `bun run lint` | ESLint |
+| `bun run test:unit` | Bun tests for core rules (`game-logic/win.test.ts`) |
+| `bun run test:e2e` | Playwright tests in `tests/e2e` (dev server on port **5174**) |
 
-### E2E tests
-
-Playwright smoke tests start Vite on port **5174** so they do not clash with a dev server on **5173**:
-
-```bash
-bun run test:e2e
-```
-
-## Build
+First time running E2E, install browsers if prompted:
 
 ```bash
-bun run build
+bunx playwright install
 ```
 
-Produces `client/dist` and `game-logic/dist`.
+## Environment (`.env` at repo root)
+
+Next.js loads env from the project directory (the repo root).
+
+| Variable | Purpose |
+| :--- | :--- |
+| `DATABASE_URL` | Postgres for Prisma / API (pooler URL when serverless) |
+| `DIRECT_URL` | Direct URL for `prisma migrate` when `DATABASE_URL` is pooled |
+| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Redis for distributed rate limits (recommended in production) |
+| `NEXT_PUBLIC_API_BASE` | Optional absolute API base if UI and API are on different origins |
 
 ## HTTP API (sketch)
 
 | Method | Path | Notes |
 | :--- | :--- | :--- |
-| `GET` | `/` | Service probe: `{ "ok", "service": "four.io" }` |
 | `GET` | `/api/health` | Liveness |
-| `POST` | `/api/games` | New game id + seed (rate limited) |
+| `POST` | `/api/games` | New game id + seed (rate limited when Upstash configured) |
 | `POST` | `/api/scores` | Verified human win + display name (rate limited) |
 | `GET` | `/api/leaderboard` | `limit` (default 50), optional `difficulty=easy\|medium\|hard` |
 
 ## Deploy (sketch)
 
-- **Web:** Static hosting (e.g. Vercel/Netlify) with `VITE_API_URL` if the API is on another origin; CORS on the API must allow the site origin.
-- **API + DB:** Railway/Render/Fly with managed PostgreSQL; set `DATABASE_URL`, `CORS_ORIGIN`, `PORT`, run `prisma migrate deploy` on release.
+- **Vercel (or similar):** One Next.js project; set `DATABASE_URL`, `DIRECT_URL` for migrations from CI, and Upstash for rate limits. Run `prisma migrate deploy` against `DIRECT_URL` on release.
+- **Database:** Supabase or managed PostgreSQL.
 
 ## Project layout
 
-- `game-logic` — Board, win/draw, Easy/Medium/Hard CPU, `verifyGame`, scoring helpers, `boardFromMoves` for replay.
-- `client` — React Router (`/`, `/play`, `/leaderboard`, `/replay`), TanStack Query, Web Worker for heavier search, glass UI shell.
-- `server` — Express routes above, Prisma 7 + `pg` adapter, Zod parsing, request-id middleware.
-- `e2e` — Playwright smoke tests.
+- `app/` — App Router pages and `app/api/*` route handlers.
+- `components/`, `lib/`, `queries/`, `sound/` — UI and client utilities.
+- `game-logic/` — Board, win/draw, Easy/Medium/Hard CPU, `verifyGame`, scoring, `boardFromMoves` for replay.
+- `workers/` — CPU web worker for Hard difficulty.
+- `prisma/` — Schema and migrations; generated client under `generated/prisma`.
+- `public/` — Static assets.
+- `tests/e2e/` — Playwright tests.
 
 See [`PRD.md`](PRD.md) for product scope and roadmap notes.
