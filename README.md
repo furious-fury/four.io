@@ -97,5 +97,3 @@ Next.js loads env from the project directory (the repo root).
 - `prisma/` — Schema and migrations; generated client under `generated/prisma`.
 - `public/` — Static assets.
 - `tests/e2e/` — Playwright tests.
-
-See [`PRD.md`](PRD.md) for product scope and roadmap notes.
