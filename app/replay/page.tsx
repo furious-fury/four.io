@@ -2,6 +2,14 @@ import { boardFromMoves, type Board } from "@/game-logic";
 import Link from "next/link";
 import { Board as GameBoard } from "@/components/Board";
 import { Shell } from "@/components/Shell";
+import { pageMetadata } from "@/lib/pageMeta";
+
+export const metadata = pageMetadata({
+  title: "Replay",
+  description:
+    "Reconstruct a Connect 4 game from a move list in the URL. Read-only board; scores still require server verification.",
+  pathname: "/replay",
+});
 
 function parseMoves(raw: string | undefined): number[] | null {
   if (raw == null || raw.trim() === "") return [];
