@@ -1,6 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -165,8 +166,16 @@ export function Shell({ children }: { children: ReactNode }) {
           <div className="mx-auto flex min-h-14 max-w-6xl items-center gap-2 px-3 py-3 sm:gap-4 sm:px-4 md:min-h-0 md:py-4 md:px-8">
             <Link
               href="/"
-              className="shrink-0 font-display text-lg font-semibold tracking-tight sm:text-xl md:text-2xl"
+              className="flex shrink-0 items-center gap-2 font-display text-lg font-semibold tracking-tight sm:gap-2.5 sm:text-xl md:gap-3 md:text-2xl"
             >
+              <Image
+                src="/logo.svg"
+                alt=""
+                width={40}
+                height={40}
+                priority
+                className="size-8 shrink-0 rounded-xl shadow-sm shadow-black/30 sm:size-9 md:size-10"
+              />
               <span className="text-gradient-brand drop-shadow-sm">four.io</span>
             </Link>
 

@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none" aria-hidden="true">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="50%" stop-color="#14532d"/>
+      <stop offset="100%" stop-color="#042f2e"/>
+    </linearGradient>
+    <linearGradient id="discR" x1="30%" y1="20%" x2="70%" y2="80%">
+      <stop offset="0%" stop-color="#f87171"/>
+      <stop offset="100%" stop-color="#b91c1c"/>
+    </linearGradient>
+    <linearGradient id="discY" x1="30%" y1="20%" x2="70%" y2="80%">
+      <stop offset="0%" stop-color="#fde047"/>
+      <stop offset="100%" stop-color="#ca8a04"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect x="44" y="44" width="424" height="424" rx="56" fill="#020617" fill-opacity="0.4" stroke="#34d399" stroke-opacity="0.22" stroke-width="2"/>
+  <!-- 7×4 faint grid (7 columns) -->
+  <g opacity="0.14" fill="#94a3b8">
+    <circle cx="80" cy="148" r="18"/><circle cx="138" cy="148" r="18"/><circle cx="196" cy="148" r="18"/><circle cx="254" cy="148" r="18"/><circle cx="312" cy="148" r="18"/><circle cx="370" cy="148" r="18"/><circle cx="428" cy="148" r="18"/>
+    <circle cx="80" cy="228" r="18"/><circle cx="138" cy="228" r="18"/><circle cx="196" cy="228" r="18"/><circle cx="254" cy="228" r="18"/><circle cx="312" cy="228" r="18"/><circle cx="370" cy="228" r="18"/><circle cx="428" cy="228" r="18"/>
+    <circle cx="80" cy="308" r="18"/><circle cx="138" cy="308" r="18"/><circle cx="196" cy="308" r="18"/><circle cx="254" cy="308" r="18"/><circle cx="312" cy="308" r="18"/><circle cx="370" cy="308" r="18"/><circle cx="428" cy="308" r="18"/>
+    <circle cx="80" cy="388" r="18"/><circle cx="138" cy="388" r="18"/><circle cx="196" cy="388" r="18"/><circle cx="254" cy="388" r="18"/><circle cx="312" cy="388" r="18"/><circle cx="370" cy="388" r="18"/><circle cx="428" cy="388" r="18"/>
+  </g>
+  <!-- Diagonal win: columns 0–3, rows 3→0 (row 0 at top) -->
+  <circle cx="80" cy="388" r="32" fill="url(#discR)" filter="url(#glow)"/>
+  <circle cx="138" cy="308" r="32" fill="url(#discY)" filter="url(#glow)"/>
+  <circle cx="196" cy="228" r="32" fill="url(#discR)" filter="url(#glow)"/>
+  <circle cx="254" cy="148" r="32" fill="url(#discY)" filter="url(#glow)"/>
+</svg>
