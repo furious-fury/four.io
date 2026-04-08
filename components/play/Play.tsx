@@ -426,6 +426,8 @@ export function Play() {
           humanWon={terminal.kind === "human"}
           showWinningLineHint={terminal.kind === "cpu"}
           canPeekBoard={terminal.kind === "human" || terminal.kind === "cpu"}
+          shareMoves={moves}
+          shareSeed={seed}
           onPlayAgain={resetToPick}
           onSubmitScore={terminal.kind === "human" ? () => setSubmitOpen(true) : undefined}
         />

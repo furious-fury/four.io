@@ -1,6 +1,6 @@
 import { boardFromMoves, type Board } from "@/game-logic";
 import Link from "next/link";
-import { Board as GameBoard } from "@/components/Board";
+import { ReplayBoardView } from "@/components/replay/ReplayBoardView";
 import { Shell } from "@/components/Shell";
 import { pageMetadata } from "@/lib/pageMeta";
 
@@ -51,7 +51,9 @@ export default async function ReplayPage({
         <div className="glass-panel p-5 md:p-6">
           <h1 className="font-display text-2xl font-semibold text-white md:text-3xl">Replay</h1>
           <p className="mt-1 text-sm text-white/65">
-            Read-only reconstruction from the URL. Scores still require server verification.
+            This is a <strong className="text-white/85">static snapshot</strong>: the final board after applying the move
+            list in order (human, then CPU, alternating). Paste or share a <code className="text-amber-200/90">?moves=…</code>{" "}
+            link — there is no animated playback, and this view does not verify scores.
           </p>
           {seedNote ? <p className="mt-2 text-xs text-white/45">seed (informational): {seedNote}</p> : null}
           <div className="mt-4 flex flex-wrap gap-2">
@@ -68,14 +70,7 @@ export default async function ReplayPage({
           <p className="glass-panel border-amber-500/30 px-4 py-3 text-amber-100">{error}</p>
         ) : board ? (
           <div className="glass-panel p-4 sm:p-6">
-            <GameBoard
-              board={board}
-              onColumnClick={() => {}}
-              disabled
-              winningCells={null}
-              highlightCol={null}
-              lastDrop={null}
-            />
+            <ReplayBoardView board={board} />
           </div>
         ) : (
           <p className="text-white/55">

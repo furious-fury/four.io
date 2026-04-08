@@ -13,6 +13,8 @@ type Props = {
   lastDrop: { row: number; col: number } | null;
   focusedCol?: number | null;
   hintCol?: number | null;
+  /** Hide top column controls (for read-only replay / snapshot views). */
+  hideColumnSelectors?: boolean;
 };
 
 function cellKey(r: number, c: number) {
@@ -29,11 +31,13 @@ export function Board({
   lastDrop,
   focusedCol = null,
   hintCol = null,
+  hideColumnSelectors = false,
 }: Props) {
   const winSet = new Set(winningCells?.map((x) => cellKey(x.row, x.col)) ?? []);
 
   return (
     <div className="flex flex-col items-center gap-2">
+      {hideColumnSelectors ? null : (
       <div className="grid w-full max-w-md grid-cols-7 gap-1.5 sm:gap-2">
         {Array.from({ length: COLS }, (_, c) => {
           const full = getDropRow(board, c) < 0;
@@ -73,6 +77,7 @@ export function Board({
           );
         })}
       </div>
+      )}
 
       <div className="w-full max-w-md rounded-2xl border-4 border-emerald-900/90 bg-gradient-to-b from-emerald-950 to-teal-950 p-2 shadow-inner shadow-black/40 ring-1 ring-white/10">
         <div className="flex flex-col gap-1.5">
