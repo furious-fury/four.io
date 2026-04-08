@@ -1,0 +1,17 @@
+{
+  "name": "four.io",
+  "private": true,
+  "workspaces": ["client", "server", "game-logic"],
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "concurrently": "^9.1.2"
+  },
+  "scripts": {
+    "postinstall": "cd game-logic && bun run build",
+    "dev": "concurrently -k -n api,web -c blue,green \"bun run dev:server\" \"bun run dev:client\"",
+    "dev:client": "cd client && bun run dev",
+    "dev:server": "bun --watch server/src/index.ts",
+    "build": "cd game-logic && bun run build && cd ../client && bun run build",
+    "lint": "echo ok"
+  }
+}
