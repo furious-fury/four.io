@@ -92,7 +92,9 @@ export function Board({
                       key={cellKey(r, c)}
                       className={[
                         "relative flex aspect-square max-h-12 items-center justify-center overflow-visible rounded-full",
-                        isWin ? "ring-2 ring-amber-200 ring-offset-1 ring-offset-emerald-950" : "",
+                        isWin
+                          ? "z-[1] ring-[3px] ring-amber-200 ring-offset-2 ring-offset-emerald-950 shadow-[0_0_12px_rgba(253,224,71,0.45)]"
+                          : "",
                       ].join(" ")}
                     >
                       <div

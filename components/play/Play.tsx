@@ -360,7 +360,7 @@ export function Play() {
           ))}
         </div>
       ) : (
-        <div className="glass-panel space-y-4 p-4 sm:p-6">
+        <div id="play-game-board" className="glass-panel space-y-4 p-4 sm:p-6">
           <div className="flex flex-wrap items-center justify-center gap-3 text-sm">
             <button
               type="button"
@@ -424,6 +424,8 @@ export function Play() {
                 : "The board is full."
           }
           humanWon={terminal.kind === "human"}
+          showWinningLineHint={terminal.kind === "cpu"}
+          canPeekBoard={terminal.kind === "human" || terminal.kind === "cpu"}
           onPlayAgain={resetToPick}
           onSubmitScore={terminal.kind === "human" ? () => setSubmitOpen(true) : undefined}
         />
