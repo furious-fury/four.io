@@ -64,7 +64,12 @@ export function SubmitScoreOverlay({ onClose, onSubmit }: Props) {
           disabled={busy}
         />
         {err ? <p className="mt-2 text-sm text-red-300">{err}</p> : null}
-        <div className="mt-6 flex gap-3">
+        <p className="mt-3 text-center text-xs text-white/45">
+          <Link to="/help" className="text-emerald-300/80 underline-offset-2 hover:text-emerald-200 hover:underline">
+            How scoring &amp; names work
+          </Link>
+        </p>
+        <div className="mt-5 flex gap-3">
           <button
             type="button"
             onClick={onClose}

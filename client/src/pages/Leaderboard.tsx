@@ -1,14 +1,36 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { fetchLeaderboard, leaderboardKeys } from "../queries/leaderboard";
+import { useMemo, useState } from "react";
+import { LAST_SUBMITTED_NAME_KEY, normalizeDisplayName } from "../lib/displayName";
+import {
+  fetchLeaderboard,
+  leaderboardKeys,
+  type LeaderboardFilter,
+} from "../queries/leaderboard";
 
 const LIMIT = 50;
 
+const FILTERS: { id: LeaderboardFilter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "easy", label: "Easy" },
+  { id: "medium", label: "Medium" },
+  { id: "hard", label: "Hard" },
+];
+
 export function Leaderboard() {
   const [dense, setDense] = useState(false);
+  const [filter, setFilter] = useState<LeaderboardFilter>("all");
+  const lastSubmittedRaw = useMemo(() => {
+    try {
+      return sessionStorage.getItem(LAST_SUBMITTED_NAME_KEY);
+    } catch {
+      return null;
+    }
+  }, []);
+  const lastSubmittedNorm = lastSubmittedRaw ? normalizeDisplayName(lastSubmittedRaw) : null;
+
   const { data, isPending, isError, isFetching } = useQuery({
-    queryKey: leaderboardKeys.list(LIMIT),
-    queryFn: () => fetchLeaderboard(LIMIT),
+    queryKey: leaderboardKeys.list(LIMIT, filter),
+    queryFn: () => fetchLeaderboard(LIMIT, filter),
   });
 
   const entries = data?.entries ?? null;
@@ -21,7 +43,8 @@ export function Leaderboard() {
           <div>
             <h1 className="font-display text-2xl font-semibold text-white md:text-3xl">Hall of Fame</h1>
             <p className="mt-1 text-sm text-white/65">
-              Top 50 players worldwide by verified score.
+              Top 50 by verified score
+              {filter !== "all" ? ` · ${filter} only (ranks within this filter)` : ""}.
               {isFetching && !isPending ? (
                 <span className="ml-2 text-xs text-emerald-300/80">Updating…</span>
               ) : null}
@@ -36,6 +59,23 @@ export function Leaderboard() {
             />
             Compact rows
           </label>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {FILTERS.map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setFilter(id)}
+              className={[
+                "rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wider transition",
+                filter === id
+                  ? "bg-white/20 text-white ring-1 ring-white/30"
+                  : "bg-black/25 text-white/70 hover:bg-white/10 hover:text-white",
+              ].join(" ")}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -59,26 +99,31 @@ export function Leaderboard() {
             ))}
           </ul>
         ) : entries && entries.length === 0 ? (
-          <p className="px-4 py-10 text-center text-white/50">No scores yet. Be the first to win on Hard.</p>
+          <p className="px-4 py-10 text-center text-white/50">No scores in this view yet.</p>
         ) : entries ? (
           <ul className="divide-y divide-white/10">
-            {entries.map((e) => (
-              <li
-                key={`${e.rank}-${e.name}-${e.date}`}
-                className={[
-                  "grid grid-cols-[auto_1fr_auto] sm:grid-cols-[auto_1fr_auto_auto] gap-2 px-4 text-sm items-center text-white/90",
-                  dense ? "py-1.5" : "py-3",
-                  "hover:bg-white/[0.06]",
-                ].join(" ")}
-              >
-                <span className="w-8 font-mono text-white/45">{e.rank}</span>
-                <span className="truncate font-medium capitalize">{e.name}</span>
-                <span className="text-right font-semibold tabular-nums text-amber-200/95">{e.score}</span>
-                <span className="hidden text-right text-xs text-white/45 sm:block">
-                  {new Date(e.date).toLocaleString()}
-                </span>
-              </li>
-            ))}
+            {entries.map((e) => {
+              const isYou =
+                lastSubmittedNorm !== null && normalizeDisplayName(e.name) === lastSubmittedNorm;
+              return (
+                <li
+                  key={`${e.rank}-${e.name}-${e.date}`}
+                  className={[
+                    "grid grid-cols-[auto_1fr_auto] sm:grid-cols-[auto_1fr_auto_auto] gap-2 px-4 text-sm items-center text-white/90",
+                    dense ? "py-1.5" : "py-3",
+                    "hover:bg-white/[0.06]",
+                    isYou ? "bg-emerald-500/15 ring-1 ring-inset ring-emerald-400/40" : "",
+                  ].join(" ")}
+                >
+                  <span className="w-8 font-mono text-white/45">{e.rank}</span>
+                  <span className="truncate font-medium capitalize">{e.name}</span>
+                  <span className="text-right font-semibold tabular-nums text-amber-200/95">{e.score}</span>
+                  <span className="hidden text-right text-xs text-white/45 sm:block">
+                    {new Date(e.date).toLocaleString()}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         ) : null}
       </div>

@@ -3,6 +3,7 @@
   "private": true,
   "workspaces": ["client", "server", "game-logic"],
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@types/node": "^22.10.0",
     "concurrently": "^9.1.2"
   },
@@ -12,6 +13,7 @@
     "dev:client": "cd client && bun run dev",
     "dev:server": "bun --watch server/src/index.ts",
     "build": "cd game-logic && bun run build && cd ../client && bun run build",
+    "test:e2e": "playwright test",
     "lint": "echo ok"
   }
 }

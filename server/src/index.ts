@@ -9,11 +9,18 @@ import cors from "cors";
 import express from "express";
 import rateLimit from "express-rate-limit";
 import { prisma } from "./db.js";
+import { requestIdMiddleware } from "./requestId.js";
+import {
+  leaderboardQuerySchema,
+  parseLeaderboardResponse,
+  scoreSubmitBodySchema,
+} from "./schemas.js";
 
 const app = express();
-const PORT = Number(process.env.PORT) || 3005;
+const PORT = Number(process.env.PORT) || 5005;
 const CORS_ORIGIN = process.env.CORS_ORIGIN ?? "http://localhost:5173";
 
+app.use(requestIdMiddleware);
 app.use(
   cors({
     origin: CORS_ORIGIN,
@@ -56,31 +63,17 @@ app.post("/api/games", gamesLimiter, (_req, res) => {
 
 app.post("/api/scores", submitLimiter, async (req, res) => {
   try {
-    const { displayName, difficulty, moves, seed, gameId: _gid } = req.body as {
-      displayName?: string;
-      difficulty?: string;
-      moves?: number[];
-      seed?: number;
-      gameId?: string;
-    };
-
-    if (
-      typeof displayName !== "string" ||
-      typeof difficulty !== "string" ||
-      !Array.isArray(moves) ||
-      typeof seed !== "number"
-    ) {
+    const parsed = scoreSubmitBodySchema.safeParse(req.body);
+    if (!parsed.success) {
       return res.status(400).json({ error: "invalid_body" });
     }
+    const { displayName, difficulty, moves, seed } = parsed.data;
 
     if (!NAME_RE.test(displayName.trim())) {
       return res.status(400).json({ error: "invalid_name" });
     }
 
     const d = difficulty as Difficulty;
-    if (d !== "easy" && d !== "medium" && d !== "hard") {
-      return res.status(400).json({ error: "invalid_difficulty" });
-    }
 
     const normalized = normalizeName(displayName);
     if (normalized.length < 2) {
@@ -127,15 +120,20 @@ app.post("/api/scores", submitLimiter, async (req, res) => {
     });
     res.json({ ok: true, updated: false, totalScore });
   } catch (e) {
-    console.error(e);
+    console.error({ reqId: req.requestId, err: e });
     res.status(500).json({ error: "server_error" });
   }
 });
 
 app.get("/api/leaderboard", async (req, res) => {
-  const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 50));
+  const qParsed = leaderboardQuerySchema.safeParse(req.query);
+  if (!qParsed.success) {
+    return res.status(400).json({ error: "invalid_query" });
+  }
+  const { limit, difficulty: diffFilter } = qParsed.data;
   try {
     const rows = await prisma.leaderboardEntry.findMany({
+      where: diffFilter ? { difficulty: diffFilter } : undefined,
       orderBy: { totalScore: "desc" },
       take: limit,
       select: {
@@ -152,9 +150,11 @@ app.get("/api/leaderboard", async (req, res) => {
       date: r.createdAt.toISOString(),
       difficulty: r.difficulty,
     }));
-    res.json({ entries: ranked });
+    const body = { entries: ranked };
+    parseLeaderboardResponse.parse(body);
+    res.json(body);
   } catch (e) {
-    console.error(e);
+    console.error({ reqId: req.requestId, err: e });
     res.status(500).json({ error: "server_error" });
   }
 });

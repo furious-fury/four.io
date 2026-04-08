@@ -11,5 +11,5 @@
       "@four.io/game-logic": ["../game-logic/src/index.ts"]
     }
   },
-  "include": ["src/**/*.ts", "prisma.config.ts"]
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "prisma.config.ts"]
 }

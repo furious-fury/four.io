@@ -63,3 +63,39 @@ body {
     animation: none;
   }
 }
+
+/* Short win flair behind game-over dialog (skipped when prefers-reduced-motion). */
+@keyframes win-burst-scale {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  35% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.25);
+  }
+}
+
+.win-burst-bg {
+  pointer-events: none;
+  position: absolute;
+  inset: -40%;
+  background: radial-gradient(
+    circle at 50% 45%,
+    rgba(250, 204, 21, 0.35) 0%,
+    rgba(16, 185, 129, 0.15) 35%,
+    transparent 60%
+  );
+  animation: win-burst-scale 1.1s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .win-burst-bg {
+    animation: none;
+    opacity: 0;
+  }
+}

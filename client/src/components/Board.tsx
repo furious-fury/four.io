@@ -1,4 +1,4 @@
-import { COLS, CPU, EMPTY, HUMAN, ROWS, type Board } from "@four.io/game-logic";
+import { COLS, CPU, EMPTY, HUMAN, ROWS, type Board, getDropRow } from "@four.io/game-logic";
 import type { CSSProperties } from "react";
 
 type Props = {
@@ -10,6 +10,10 @@ type Props = {
   highlightCol: number | null;
   /** When set, that cell’s disc plays a drop animation (row index top → bottom). */
   lastDrop: { row: number; col: number } | null;
+  /** Optional keyboard-driven column focus (0–6). */
+  focusedCol?: number | null;
+  /** Hint column for easy/medium (visual only). */
+  hintCol?: number | null;
 };
 
 function cellKey(r: number, c: number) {
@@ -24,30 +28,51 @@ export function Board({
   winningCells,
   highlightCol,
   lastDrop,
+  focusedCol = null,
+  hintCol = null,
 }: Props) {
   const winSet = new Set(winningCells?.map((x) => cellKey(x.row, x.col)) ?? []);
 
   return (
     <div className="flex flex-col items-center gap-2">
       <div className="grid grid-cols-7 gap-1.5 sm:gap-2 w-full max-w-md">
-        {Array.from({ length: COLS }, (_, c) => (
-          <button
-            key={c}
-            type="button"
-            disabled={disabled}
-            onMouseEnter={() => onColumnHover?.(c)}
-            onMouseLeave={() => onColumnHover?.(null)}
-            onClick={() => onColumnClick(c)}
-            className={[
-              "h-10 rounded-t-lg text-xs font-medium transition-colors sm:h-12",
-              disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer hover:bg-emerald-500/35",
-              highlightCol === c ? "bg-emerald-400/45" : "bg-emerald-950/50",
-            ].join(" ")}
-            aria-label={`Column ${c + 1}`}
-          >
-            ↓
-          </button>
-        ))}
+        {Array.from({ length: COLS }, (_, c) => {
+          const full = getDropRow(board, c) < 0;
+          const colDisabled = disabled || full;
+          let colClass =
+            "h-10 rounded-t-lg text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/80 focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-950 sm:h-12 ";
+          if (full) {
+            colClass += "cursor-not-allowed bg-zinc-900/70 opacity-50";
+          } else if (disabled) {
+            colClass += "cursor-not-allowed bg-emerald-950/50 opacity-40";
+          } else {
+            colClass +=
+              highlightCol === c
+                ? "cursor-pointer bg-emerald-400/45 hover:bg-emerald-500/35"
+                : "cursor-pointer bg-emerald-950/50 hover:bg-emerald-500/35";
+          }
+          if (hintCol === c && !full) {
+            colClass += " ring-2 ring-amber-200/80 ring-offset-1 ring-offset-emerald-950";
+          }
+          if (focusedCol === c && !full) {
+            colClass += " z-[1] ring-2 ring-white/80 ring-offset-2 ring-offset-emerald-950";
+          }
+          return (
+            <button
+              key={c}
+              type="button"
+              disabled={colDisabled}
+              title={full ? "Column full" : undefined}
+              onMouseEnter={() => onColumnHover?.(c)}
+              onMouseLeave={() => onColumnHover?.(null)}
+              onClick={() => onColumnClick(c)}
+              className={colClass}
+              aria-label={full ? `Column ${c + 1} full` : `Column ${c + 1}`}
+            >
+              {full ? "×" : "↓"}
+            </button>
+          );
+        })}
       </div>
 
       <div className="w-full max-w-md rounded-2xl border-4 border-emerald-900/90 bg-gradient-to-b from-emerald-950 to-teal-950 p-2 shadow-inner shadow-black/40 ring-1 ring-white/10">

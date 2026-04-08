@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { apiUrl } from "../apiUrl";
 
 export type LeaderboardEntry = {
@@ -8,13 +9,34 @@ export type LeaderboardEntry = {
   difficulty: string;
 };
 
+export type LeaderboardFilter = "all" | "easy" | "medium" | "hard";
+
+const leaderboardEntrySchema = z.object({
+  rank: z.number(),
+  name: z.string(),
+  score: z.number(),
+  date: z.string(),
+  difficulty: z.string(),
+});
+
+const leaderboardResponseSchema = z.object({
+  entries: z.array(leaderboardEntrySchema),
+});
+
 export const leaderboardKeys = {
   all: ["leaderboard"] as const,
-  list: (limit: number) => [...leaderboardKeys.all, "list", limit] as const,
+  list: (limit: number, filter: LeaderboardFilter = "all") =>
+    [...leaderboardKeys.all, "list", limit, filter] as const,
 };
 
-export async function fetchLeaderboard(limit: number): Promise<{ entries: LeaderboardEntry[] }> {
-  const r = await fetch(apiUrl(`/api/leaderboard?limit=${limit}`));
+export async function fetchLeaderboard(
+  limit: number,
+  filter: LeaderboardFilter = "all"
+): Promise<{ entries: LeaderboardEntry[] }> {
+  const q = new URLSearchParams({ limit: String(limit) });
+  if (filter !== "all") q.set("difficulty", filter);
+  const r = await fetch(apiUrl(`/api/leaderboard?${q}`));
   if (!r.ok) throw new Error(`leaderboard_${r.status}`);
-  return r.json() as Promise<{ entries: LeaderboardEntry[] }>;
+  const json: unknown = await r.json();
+  return leaderboardResponseSchema.parse(json);
 }

@@ -18,5 +18,6 @@ model LeaderboardEntry {
   createdAt    DateTime @default(now()) @map("created_at")
 
   @@index([totalScore(sort: Desc)])
+  @@index([difficulty, totalScore(sort: Desc)])
   @@map("leaderboard_entries")
 }

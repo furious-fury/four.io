@@ -1,12 +1,27 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, NavLink } from "react-router-dom";
 import type { ReactNode } from "react";
-import { Volume2 } from "lucide-react";
+import { Volume2, VolumeX } from "lucide-react";
+import { fetchLeaderboard, leaderboardKeys } from "../queries/leaderboard";
+import { useSound } from "../sound/SoundProvider";
 
 /** Royalty-free alpine valley — replace with your own art if you prefer. */
 const HERO_BG =
   "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=2400&q=85";
 
+const LB_LIMIT = 50;
+
 export function Shell({ children }: { children: ReactNode }) {
+  const { muted, toggleMuted } = useSound();
+  const queryClient = useQueryClient();
+
+  const prefetchLeaderboard = () => {
+    void queryClient.prefetchQuery({
+      queryKey: leaderboardKeys.list(LB_LIMIT, "all"),
+      queryFn: () => fetchLeaderboard(LB_LIMIT, "all"),
+    });
+  };
+
   return (
     <div className="relative flex min-h-dvh flex-col">
       <div className="pointer-events-none fixed inset-0 -z-10">
@@ -38,6 +53,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <nav className="flex min-w-0 flex-1 justify-center gap-4 text-xs font-medium sm:gap-8 sm:text-sm">
             <NavLink
               to="/play"
+              onMouseEnter={prefetchLeaderboard}
               className={({ isActive }) =>
                 [
                   "text-sm font-medium transition-colors",
@@ -49,6 +65,7 @@ export function Shell({ children }: { children: ReactNode }) {
             </NavLink>
             <NavLink
               to="/leaderboard"
+              onMouseEnter={prefetchLeaderboard}
               className={({ isActive }) =>
                 [
                   "text-sm font-medium transition-colors",
@@ -58,16 +75,34 @@ export function Shell({ children }: { children: ReactNode }) {
             >
               Hall of Fame
             </NavLink>
+            <NavLink
+              to="/help"
+              className={({ isActive }) =>
+                [
+                  "text-sm font-medium transition-colors",
+                  isActive ? "text-white" : "text-white/75 hover:text-white",
+                ].join(" ")
+              }
+            >
+              Help
+            </NavLink>
           </nav>
 
           <div className="ml-auto flex items-center gap-2 md:gap-3">
-            <span
-              className="flex size-10 items-center justify-center rounded-full border border-white/15 bg-black/30 text-white/50"
-              aria-hidden
+            <button
+              type="button"
+              onClick={toggleMuted}
+              className="flex size-10 items-center justify-center rounded-full border border-white/15 bg-black/30 text-white/80 transition hover:bg-white/10 hover:text-white"
+              aria-label={muted ? "Unmute sound" : "Mute sound"}
+              title={muted ? "Unmute" : "Mute"}
             >
-              <Volume2 className="size-4" />
-            </span>
-            <Link to="/play" className="btn-pill-solid hidden px-6 sm:inline-flex">
+              {muted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
+            </button>
+            <Link
+              to="/play"
+              onMouseEnter={prefetchLeaderboard}
+              className="btn-pill-solid hidden px-6 sm:inline-flex"
+            >
               Play
             </Link>
           </div>

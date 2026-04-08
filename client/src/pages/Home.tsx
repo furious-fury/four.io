@@ -1,7 +1,11 @@
 import { Link } from "react-router-dom";
+import { useMemo } from "react";
 import { Circle, Sparkles, Trophy } from "lucide-react";
+import { loadLocalStats } from "../lib/localStats";
 
 export function Home() {
+  const stats = useMemo(() => loadLocalStats(), []);
+
   return (
     <div className="relative flex min-h-[calc(100dvh-8rem)] flex-col items-center justify-center px-2 pb-8 pt-4 md:min-h-[calc(100dvh-9rem)]">
       <aside className="glass-panel absolute right-0 top-0 z-10 hidden max-w-[17rem] p-4 text-left lg:block">
@@ -42,8 +46,29 @@ export function Home() {
             Hall of Fame
           </Link>
         </div>
+        <p className="mt-4 text-center text-sm text-white/50">
+          <Link to="/help" className="text-emerald-300/90 underline-offset-2 hover:underline">
+            Rules &amp; scoring
+          </Link>
+        </p>
 
-        <ul className="mt-14 max-w-md space-y-2 text-left text-sm text-white/55">
+        <div className="glass-panel mt-10 w-full max-w-md px-4 py-3 text-left text-sm text-white/75">
+          <p className="font-display text-xs font-semibold uppercase tracking-wider text-white/90">
+            Your stats (this browser)
+          </p>
+          <ul className="mt-2 grid gap-1 text-xs">
+            {(["easy", "medium", "hard"] as const).map((d) => (
+              <li key={d} className="flex justify-between gap-4 capitalize">
+                <span className="text-white/60">{d}</span>
+                <span className="tabular-nums text-white/85">
+                  W {stats[d].w} · L {stats[d].l} · D {stats[d].d}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <ul className="mt-8 max-w-md space-y-2 text-left text-sm text-white/55">
           <li className="flex gap-2">
             <Circle className="mt-0.5 size-4 shrink-0 fill-red-400 text-red-400" aria-hidden />
             <span>You play red · CPU plays yellow · Three skill levels</span>
