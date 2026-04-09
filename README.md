@@ -7,6 +7,7 @@ Connect 4 against the CPU (Easy / Medium / Hard) with a verified global leaderbo
 - **Play:** Column controls with full-column feedback, disc drop animation, keyboard **1–7** / numpad to drop, optional **hints** (Easy / Medium), **undo last human+CPU pair** (disabled while the CPU is thinking or after the game ends).
 - **Audio:** Drop / win / lose cues (Web Audio); mute in the header; preference in `localStorage`.
 - **Home:** Local W–L–D tallies per difficulty (this browser only).
+- **Daily puzzle:** One shared **Hard** seed per **UTC calendar day**; Daily leaderboard ranks by **fewest plies**, then **fastest time**; submissions verified on `POST /api/daily/scores` (separate from the Hall of Fame table).
 - **Hall of Fame:** Top 50 scores; React Query; filters **All / Easy / Medium / Hard** (ranks within the selected filter); row highlight for the last submitted display name (`sessionStorage`).
 - **Replay:** Read-only board from `/replay?moves=0,1,2` (optional `&seed=`). Invalid sequences show an error. Scores still require server verification.
 - **API:** Zod on bodies and query params; `X-Request-Id` on responses. Score and game starts use **Upstash Redis** rate limits when `UPSTASH_*` is set (skipped if unset).
@@ -80,6 +81,9 @@ Next.js loads env from the project directory (the repo root).
 | :--- | :--- | :--- |
 | `GET` | `/api/health` | Liveness |
 | `POST` | `/api/games` | New game id + seed (rate limited when Upstash configured) |
+| `GET` | `/api/daily` | Today’s UTC puzzle: `date`, `seed`, `difficulty`, `closesAt` |
+| `POST` | `/api/daily/scores` | Verified Daily win (plies + duration; rate limited when Upstash configured) |
+| `GET` | `/api/daily/leaderboard` | `limit`, optional `date` (`YYYY-MM-DD` UTC); default today |
 | `POST` | `/api/scores` | Verified human win + display name (rate limited) |
 | `GET` | `/api/leaderboard` | `limit` (default 50), optional `difficulty=easy\|medium\|hard` |
 
@@ -97,3 +101,7 @@ Next.js loads env from the project directory (the repo root).
 - `prisma/` — Schema and migrations; generated client under `generated/prisma`.
 - `public/` — Static assets.
 - `tests/e2e/` — Playwright tests.
+
+### Roadmap (later)
+
+Campaign / streaks, curated openings, achievements, replay gallery submissions, teaching overlays, deeper PWA offline, and share-specific OG images—see product planning docs; no WebSockets required.

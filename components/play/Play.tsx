@@ -25,6 +25,7 @@ import { GameOverOverlay } from "@/components/GameOverOverlay";
 import { ChangeDifficultyModal } from "@/components/play/ChangeDifficultyModal";
 import { ProSidebar } from "@/components/play/ProSidebar";
 import { SubmitScoreOverlay } from "@/components/SubmitScoreOverlay";
+import { type DailyMeta, dailyKeys } from "@/queries/daily";
 import { leaderboardKeys } from "@/queries/leaderboard";
 import { useSound } from "@/sound/SoundProvider";
 
@@ -32,6 +33,11 @@ type Terminal =
   | { kind: "human"; cells: { row: number; col: number }[] | null }
   | { kind: "cpu"; cells: { row: number; col: number }[] | null }
   | { kind: "draw"; cells: null };
+
+export type PlayProps = {
+  mode?: "arcade" | "daily";
+  dailyMeta?: DailyMeta;
+};
 
 async function fetchNewGame(): Promise<{ gameId: string; seed: number }> {
   try {
@@ -73,19 +79,27 @@ function requestCpuMove(
   });
 }
 
-export function Play() {
+export function Play({ mode = "arcade", dailyMeta }: PlayProps = {}) {
+  if (mode === "daily" && !dailyMeta) {
+    throw new Error("Play requires dailyMeta when mode is daily");
+  }
+
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { playDrop, playWin, playLose } = useSound();
   const workerRef = useRef<Worker | null>(null);
   const recordedEndRef = useRef<string | null>(null);
   const matchEndedAtMsRef = useRef<number | null>(null);
-  const [phase, setPhase] = useState<"pick" | "playing">("pick");
-  const [difficulty, setDifficulty] = useState<Difficulty>("medium");
+  const [phase, setPhase] = useState<"pick" | "playing">(mode === "daily" ? "playing" : "pick");
+  const [difficulty, setDifficulty] = useState<Difficulty>(
+    mode === "daily" && dailyMeta ? dailyMeta.difficulty : "medium"
+  );
   const [board, setBoard] = useState<Board>(() => createEmptyBoard());
   const [moves, setMoves] = useState<number[]>([]);
-  const [seed, setSeed] = useState(0);
-  const [gameId, setGameId] = useState<string | null>(null);
+  const [seed, setSeed] = useState(mode === "daily" && dailyMeta ? dailyMeta.seed : 0);
+  const [gameId, setGameId] = useState<string | null>(() =>
+    mode === "daily" && dailyMeta ? `daily:${dailyMeta.date}` : null
+  );
   const [busy, setBusy] = useState(false);
   const [highlightCol, setHighlightCol] = useState<number | null>(null);
   const [lastDrop, setLastDrop] = useState<{ row: number; col: number } | null>(null);
@@ -95,7 +109,9 @@ export function Play() {
   const [undoStack, setUndoStack] = useState<{ board: Board; moves: number[] }[]>([]);
   const [hintsOn, setHintsOn] = useState(false);
   const [hintCol, setHintCol] = useState<number | null>(null);
-  const [matchStartedAtMs, setMatchStartedAtMs] = useState<number | null>(null);
+  const [matchStartedAtMs, setMatchStartedAtMs] = useState<number | null>(() =>
+    mode === "daily" ? Date.now() : null
+  );
   const [proOpen, setProOpen] = useState(false);
   const [pendingDifficulty, setPendingDifficulty] = useState<Difficulty | null>(null);
 
@@ -140,6 +156,27 @@ export function Play() {
     matchEndedAtMsRef.current = null;
   }, []);
 
+  const restartDailyRound = useCallback(() => {
+    if (mode !== "daily" || !dailyMeta) return;
+    setBusy(true);
+    setBoard(createEmptyBoard());
+    setMoves([]);
+    setTerminal(null);
+    setSubmitOpen(false);
+    setLastDrop(null);
+    setUndoStack([]);
+    setHintsOn(false);
+    setHintCol(null);
+    setFocusedCol(null);
+    matchEndedAtMsRef.current = null;
+    setSeed(dailyMeta.seed);
+    setDifficulty(dailyMeta.difficulty);
+    setGameId(`daily:${dailyMeta.date}`);
+    setPhase("playing");
+    setMatchStartedAtMs(Date.now());
+    setBusy(false);
+  }, [mode, dailyMeta]);
+
   const startMatch = useCallback(async (d: Difficulty) => {
     setDifficulty(d);
     setBusy(true);
@@ -170,6 +207,13 @@ export function Play() {
   }, [difficulty]);
 
   function confirmNewGame() {
+    if (mode === "daily") {
+      if (phase === "playing" && !terminal) {
+        if (!window.confirm("Reset today’s daily puzzle?")) return;
+      }
+      restartDailyRound();
+      return;
+    }
     if (phase === "playing" && !terminal) {
       if (!window.confirm("Abandon this match and start over?")) return;
     }
@@ -319,6 +363,47 @@ export function Play() {
   async function submitScore(name: string) {
     const startedAt = matchStartedAtMs ?? Date.now();
     const endedAt = matchEndedAtMsRef.current ?? Date.now();
+
+    if (mode === "daily" && dailyMeta) {
+      const r = await fetch(apiUrl("/api/daily/scores"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          displayName: name.trim(),
+          moves,
+          moveHistory: moves,
+          seed,
+          puzzleDate: dailyMeta.date,
+          startedAt,
+          endedAt,
+        }),
+      });
+      const data = (await r.json().catch(() => ({}))) as { error?: string; rank?: number };
+      if (!r.ok) {
+        const msg =
+          data.error === "rate_limited"
+            ? "Too many submissions. Try again later."
+            : data.error === "daily_not_improved"
+              ? "Your existing daily result is already as good or better."
+              : data.error === "daily_wrong_date"
+                ? "This puzzle is no longer active (UTC day changed). Refresh the page."
+                : data.error === "daily_wrong_seed"
+                  ? "Puzzle data mismatch. Refresh and try again."
+                  : data.error === "invalid_name"
+                    ? "Invalid name (2–24 chars, letters, numbers, spaces, _ -)."
+                    : data.error === "duration_implausible"
+                      ? "That run finished too quickly to verify."
+                      : data.error === "invalid_times"
+                        ? "Invalid timestamps."
+                        : data.error === "moves_moveHistory_mismatch"
+                          ? "Move list mismatch."
+                          : data.error ?? `Error ${r.status}`;
+        return { ok: false as const, error: msg };
+      }
+      await queryClient.invalidateQueries({ queryKey: dailyKeys.all });
+      return { ok: true as const };
+    }
+
     const r = await fetch(apiUrl("/api/scores"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -376,15 +461,22 @@ export function Play() {
         <div className="glass-panel p-5 md:p-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h1 className="font-display text-2xl font-semibold text-white md:text-3xl">Play</h1>
+              <h1 className="font-display text-2xl font-semibold text-white md:text-3xl">
+                {mode === "daily" ? "Daily puzzle" : "Play"}
+              </h1>
+              {mode === "daily" && dailyMeta ? (
+                <p className="mt-1 text-xs text-white/50">
+                  UTC {dailyMeta.date} · Everyone shares this seed · Resets {new Date(dailyMeta.closesAt).toUTCString()}
+                </p>
+              ) : null}
               {phase === "playing" && !terminal ? (
                 <p className="mt-1 text-sm text-white/65">
                   {busy ? "CPU is thinking…" : "Your turn — pick a column."} ·{" "}
                   <span className="capitalize text-amber-200/90">{difficulty}</span>
                 </p>
-              ) : (
+              ) : mode !== "daily" ? (
                 <p className="mt-1 text-sm text-white/65">Choose a difficulty to begin.</p>
-              )}
+              ) : null}
             </div>
             <div className="flex flex-wrap gap-2">
               {phase === "playing" ? (
@@ -415,7 +507,7 @@ export function Play() {
           </div>
         </div>
 
-        {phase === "pick" ? (
+        {mode !== "daily" && phase === "pick" ? (
           <div className="glass-panel flex flex-col gap-3 p-6 sm:flex-row sm:justify-center">
             {(["easy", "medium", "hard"] as const).map((d) => (
               <button
@@ -487,7 +579,9 @@ export function Play() {
             }
             subtitle={
               terminal.kind === "human"
-                ? "Submit your score to the Hall of Fame."
+                ? mode === "daily"
+                  ? "Submit to today’s Daily leaderboard (fewest plies wins; faster breaks ties)."
+                  : "Submit your score to the Hall of Fame."
                 : terminal.kind === "cpu"
                   ? "Try again with a different strategy."
                   : "The board is full."
@@ -497,7 +591,7 @@ export function Play() {
             canPeekBoard={terminal.kind === "human" || terminal.kind === "cpu"}
             shareMoves={moves}
             shareSeed={seed}
-            onPlayAgain={resetToPick}
+            onPlayAgain={mode === "daily" ? restartDailyRound : resetToPick}
             onSubmitScore={terminal.kind === "human" ? () => setSubmitOpen(true) : undefined}
           />
         ) : null}
@@ -520,6 +614,7 @@ export function Play() {
             onDifficultyChange={handleProDifficulty}
             onClose={() => setProOpen(false)}
             showClose={false}
+            difficultyLocked={mode === "daily"}
           />
         </aside>
       ) : null}
@@ -552,6 +647,7 @@ export function Play() {
               onDifficultyChange={handleProDifficulty}
               onClose={() => setProOpen(false)}
               showClose
+              difficultyLocked={mode === "daily"}
             />
           </div>
         </div>

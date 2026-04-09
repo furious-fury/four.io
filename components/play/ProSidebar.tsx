@@ -16,6 +16,8 @@ type Props = {
   onClose?: () => void;
   /** Mobile sheet: show close affordance */
   showClose?: boolean;
+  /** Hide difficulty control (e.g. daily puzzle). */
+  difficultyLocked?: boolean;
 };
 
 export function ProSidebar({
@@ -26,6 +28,7 @@ export function ProSidebar({
   onDifficultyChange,
   onClose,
   showClose,
+  difficultyLocked,
 }: Props) {
   const evalRaw = useMemo(() => {
     if (gameOver) return null;
@@ -99,23 +102,32 @@ export function ProSidebar({
 
       <section aria-label="Difficulty">
         <p className="text-xs font-medium uppercase tracking-wide text-white/45">Difficulty</p>
-        <p className="mt-1 text-xs text-amber-200/70">Changing level resets the board.</p>
-        <div className="mt-2 flex flex-wrap gap-1 rounded-2xl border border-white/10 bg-black/30 p-1">
-          {(["easy", "medium", "hard"] as const).map((d) => (
-            <button
-              key={d}
-              type="button"
-              onClick={() => onDifficultyChange(d)}
-              className={
-                difficulty === d
-                  ? "flex-1 rounded-xl bg-white/20 px-3 py-2 text-xs font-semibold capitalize text-white"
-                  : "flex-1 rounded-xl px-3 py-2 text-xs font-medium capitalize text-white/65 transition hover:bg-white/10"
-              }
-            >
-              {d}
-            </button>
-          ))}
-        </div>
+        {difficultyLocked ? (
+          <p className="mt-2 text-xs text-white/70">
+            Fixed for this mode:{" "}
+            <span className="font-semibold capitalize text-amber-200/90">{difficulty}</span>
+          </p>
+        ) : (
+          <>
+            <p className="mt-1 text-xs text-amber-200/70">Changing level resets the board.</p>
+            <div className="mt-2 flex flex-wrap gap-1 rounded-2xl border border-white/10 bg-black/30 p-1">
+              {(["easy", "medium", "hard"] as const).map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => onDifficultyChange(d)}
+                  className={
+                    difficulty === d
+                      ? "flex-1 rounded-xl bg-white/20 px-3 py-2 text-xs font-semibold capitalize text-white"
+                      : "flex-1 rounded-xl px-3 py-2 text-xs font-medium capitalize text-white/65 transition hover:bg-white/10"
+                  }
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </section>
 
       <section aria-label="Move history" className="min-h-0 flex-1">

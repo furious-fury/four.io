@@ -21,3 +21,16 @@ model LeaderboardEntry {
   @@index([difficulty, totalScore(sort: Desc)])
   @@map("leaderboard_entries")
 }
+
+model DailyPuzzleEntry {
+  id          String   @id @default(uuid())
+  puzzleDate  DateTime @db.Date @map("puzzle_date")
+  displayName String   @map("display_name")
+  moveCount   Int      @map("move_count")
+  durationMs  Int      @map("duration_ms")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([puzzleDate, displayName])
+  @@index([puzzleDate, moveCount, durationMs])
+  @@map("daily_puzzle_entries")
+}

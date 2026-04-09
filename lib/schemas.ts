@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 const difficultyEnum = z.enum(["easy", "medium", "hard"]);
+const dateKeyRegex = /^\d{4}-\d{2}-\d{2}$/;
 
 function firstQuery(val: unknown): string | undefined {
   if (val === undefined || val === "") return undefined;
@@ -34,6 +35,53 @@ export const leaderboardEntrySchema = z.object({
 export const parseLeaderboardResponse = z.object({
   entries: z.array(leaderboardEntrySchema),
 });
+
+export const dailyLeaderboardQuerySchema = z.object({
+  date: z.preprocess((val) => {
+    const s = firstQuery(val);
+    if (s === undefined || !dateKeyRegex.test(s)) return undefined;
+    return s;
+  }, z.string().regex(dateKeyRegex).optional()),
+  limit: z.preprocess((val) => {
+    const s = firstQuery(val);
+    if (s === undefined) return 50;
+    const n = Number(s);
+    if (!Number.isFinite(n)) return 50;
+    return Math.min(50, Math.max(1, Math.trunc(n)));
+  }, z.number().int().min(1).max(50)),
+});
+
+export const dailyScoreSubmitBodySchema = z
+  .object({
+    displayName: z.string(),
+    moves: z.array(z.number().int().min(0).max(6)).optional(),
+    moveHistory: z.array(z.number().int().min(0).max(6)).optional(),
+    seed: z.number(),
+    puzzleDate: z.string().regex(dateKeyRegex),
+    startedAt: z.number().int(),
+    endedAt: z.number().int(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.moves === undefined && data.moveHistory === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "moves_or_moveHistory_required",
+        path: ["moves"],
+      });
+    }
+    if (
+      data.moves !== undefined &&
+      data.moveHistory !== undefined &&
+      (data.moves.length !== data.moveHistory.length ||
+        data.moves.some((v, i) => v !== data.moveHistory![i]))
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "moves_moveHistory_mismatch",
+        path: ["moveHistory"],
+      });
+    }
+  });
 
 export const scoreSubmitBodySchema = z
   .object({

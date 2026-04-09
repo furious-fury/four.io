@@ -186,6 +186,9 @@ export function Shell({ children }: { children: ReactNode }) {
               <Link href="/play" onMouseEnter={prefetchLeaderboard} className={navDesktopClass(pathname, "/play")}>
                 Play
               </Link>
+              <Link href="/daily" className={navDesktopClass(pathname, "/daily")}>
+                Daily
+              </Link>
               <Link href="/leaderboard" onMouseEnter={prefetchLeaderboard} className={navDesktopClass(pathname, "/leaderboard")}>
                 Hall of Fame
               </Link>
@@ -259,6 +262,13 @@ export function Shell({ children }: { children: ReactNode }) {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Play
+              </Link>
+              <Link
+                href="/daily"
+                className={navMobileClass(pathname, "/daily")}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Daily
               </Link>
               <Link
                 href="/leaderboard"

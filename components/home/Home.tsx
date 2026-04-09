@@ -1,15 +1,22 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useMemo } from "react";
 import { Circle, Sparkles, Trophy } from "lucide-react";
 import { loadLocalStats } from "@/lib/localStats";
 
+const HomeHeroBackdrop = dynamic(
+  () => import("@/components/home/HomeHeroBackdrop").then((m) => m.HomeHeroBackdrop),
+  { ssr: false }
+);
+
 export function Home() {
   const stats = useMemo(() => loadLocalStats(), []);
 
   return (
-    <div className="relative flex min-h-[calc(100dvh-8rem)] flex-col items-center justify-center px-2 pb-8 pt-4 md:min-h-[calc(100dvh-9rem)]">
+    <div className="relative flex min-h-[calc(100dvh-8rem)] flex-col items-center justify-center overflow-hidden px-2 pb-8 pt-4 md:min-h-[calc(100dvh-9rem)]">
+      <HomeHeroBackdrop />
       <aside className="glass-panel absolute right-0 top-0 z-10 hidden max-w-[17rem] p-4 text-left lg:block">
         <p className="font-display text-sm font-semibold text-white">Verified leaderboard</p>
         <p className="mt-1 text-xs leading-relaxed text-white/70">

@@ -94,6 +94,18 @@ export function Help() {
       </section>
 
       <section className="glass-panel space-y-4 p-5 md:p-7">
+        <h2 className="font-display text-xl font-semibold text-white">Daily puzzle (UTC)</h2>
+        <p className="text-sm text-white/75">
+          The <Link href="/daily" className="text-emerald-300/90 underline-offset-2 hover:underline">Daily</Link> mode uses one{" "}
+          <strong className="text-white/90">shared CPU seed per calendar day in UTC</strong>. Everyone faces the same randomness
+          against <strong className="text-white/90">Hard</strong>. Wins can be submitted to the Daily board: ranking is{" "}
+          <strong className="text-white/90">fewest plies first</strong>, then <strong className="text-white/90">fastest elapsed time</strong>{" "}
+          as a tie-break. The server verifies moves and timestamps like the Hall of Fame. The puzzle identifier is public; fairness
+          comes from replay checks, not hiding the seed.
+        </p>
+      </section>
+
+      <section className="glass-panel space-y-4 p-5 md:p-7">
         <h2 className="font-display text-xl font-semibold text-white">How your score is calculated</h2>
         <p className="text-sm text-white/75">
           Only a <strong className="text-white/90">verified human win</strong> can create or update a Hall of Fame entry. The server

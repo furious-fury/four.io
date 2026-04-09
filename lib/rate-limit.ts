@@ -16,6 +16,15 @@ const submitLimit = redis
     })
   : null;
 
+/** Daily puzzle submit: separate bucket so arcade + daily both usable. */
+const dailySubmitLimit = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(30, "1 h"),
+      prefix: "four:daily_scores",
+    })
+  : null;
+
 /** Start games: 60 / minute per IP (matches previous Express limit). */
 const gamesLimit = redis
   ? new Ratelimit({
@@ -43,5 +52,11 @@ export async function rateLimitScores(request: NextRequest): Promise<{ ok: true 
 export async function rateLimitGames(request: NextRequest): Promise<{ ok: true } | { ok: false }> {
   if (!gamesLimit) return { ok: true };
   const { success } = await gamesLimit.limit(clientKey(request));
+  return success ? { ok: true } : { ok: false };
+}
+
+export async function rateLimitDailyScores(request: NextRequest): Promise<{ ok: true } | { ok: false }> {
+  if (!dailySubmitLimit) return { ok: true };
+  const { success } = await dailySubmitLimit.limit(clientKey(request));
   return success ? { ok: true } : { ok: false };
 }

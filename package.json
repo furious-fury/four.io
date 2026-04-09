@@ -11,7 +11,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
-    "test:unit": "bun test game-logic/win.test.ts lib/score-policy.test.ts",
+    "test:unit": "bun test game-logic/win.test.ts lib/score-policy.test.ts lib/daily-puzzle.test.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {
