@@ -14,6 +14,7 @@ import {
 } from "@/game-logic";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Home, RotateCcw, Undo2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiUrl } from "@/lib/apiUrl";
@@ -21,6 +22,8 @@ import { LAST_SUBMITTED_NAME_KEY, normalizeDisplayName } from "@/lib/displayName
 import { recordMatchOutcome } from "@/lib/localStats";
 import { Board as GameBoard } from "@/components/Board";
 import { GameOverOverlay } from "@/components/GameOverOverlay";
+import { ChangeDifficultyModal } from "@/components/play/ChangeDifficultyModal";
+import { ProSidebar } from "@/components/play/ProSidebar";
 import { SubmitScoreOverlay } from "@/components/SubmitScoreOverlay";
 import { leaderboardKeys } from "@/queries/leaderboard";
 import { useSound } from "@/sound/SoundProvider";
@@ -71,10 +74,12 @@ function requestCpuMove(
 }
 
 export function Play() {
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { playDrop, playWin, playLose } = useSound();
   const workerRef = useRef<Worker | null>(null);
   const recordedEndRef = useRef<string | null>(null);
+  const matchEndedAtMsRef = useRef<number | null>(null);
   const [phase, setPhase] = useState<"pick" | "playing">("pick");
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [board, setBoard] = useState<Board>(() => createEmptyBoard());
@@ -90,6 +95,23 @@ export function Play() {
   const [undoStack, setUndoStack] = useState<{ board: Board; moves: number[] }[]>([]);
   const [hintsOn, setHintsOn] = useState(false);
   const [hintCol, setHintCol] = useState<number | null>(null);
+  const [matchStartedAtMs, setMatchStartedAtMs] = useState<number | null>(null);
+  const [proOpen, setProOpen] = useState(false);
+  const [pendingDifficulty, setPendingDifficulty] = useState<Difficulty | null>(null);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const sync = () => {
+      if (searchParams.get("pro") === "1") {
+        setProOpen(true);
+        return;
+      }
+      setProOpen(mq.matches);
+    };
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, [searchParams]);
 
   useEffect(() => {
     const w = new Worker(new URL("../../workers/cpu.worker.ts", import.meta.url), {
@@ -114,13 +136,13 @@ export function Play() {
     setHintsOn(false);
     setHintCol(null);
     setFocusedCol(null);
+    setMatchStartedAtMs(null);
+    matchEndedAtMsRef.current = null;
   }, []);
 
-  async function startMatch(d: Difficulty) {
+  const startMatch = useCallback(async (d: Difficulty) => {
     setDifficulty(d);
-    const g = await fetchNewGame();
-    setSeed(g.seed);
-    setGameId(g.gameId);
+    setBusy(true);
     setBoard(createEmptyBoard());
     setMoves([]);
     setTerminal(null);
@@ -130,8 +152,22 @@ export function Play() {
     setHintsOn(false);
     setHintCol(null);
     setFocusedCol(null);
+    matchEndedAtMsRef.current = null;
     setPhase("playing");
-  }
+    try {
+      const g = await fetchNewGame();
+      setSeed(g.seed);
+      setGameId(g.gameId);
+      setMatchStartedAtMs(Date.now());
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
+  const handleProDifficulty = useCallback((d: Difficulty) => {
+    if (d === difficulty) return;
+    setPendingDifficulty(d);
+  }, [difficulty]);
 
   function confirmNewGame() {
     if (phase === "playing" && !terminal) {
@@ -191,6 +227,7 @@ export function Play() {
 
         const o = getOutcome(next, row, col, HUMAN);
         if (o.winner === HUMAN) {
+          matchEndedAtMsRef.current = Date.now();
           setTerminal({ kind: "human", cells: o.winningCells });
           return;
         }
@@ -280,6 +317,8 @@ export function Play() {
   }, [hintsOn, phase, terminal, difficulty, board]);
 
   async function submitScore(name: string) {
+    const startedAt = matchStartedAtMs ?? Date.now();
+    const endedAt = matchEndedAtMsRef.current ?? Date.now();
     const r = await fetch(apiUrl("/api/scores"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -287,8 +326,11 @@ export function Play() {
         displayName: name.trim(),
         difficulty,
         moves,
+        moveHistory: moves,
         seed,
         gameId,
+        startedAt,
+        endedAt,
       }),
     });
     const data = (await r.json().catch(() => ({}))) as { error?: string };
@@ -300,7 +342,13 @@ export function Play() {
             ? "That name is taken with a higher or equal score."
             : data.error === "invalid_name"
               ? "Invalid name (2–24 chars, letters, numbers, spaces, _ -)."
-              : data.error ?? `Error ${r.status}`;
+              : data.error === "duration_implausible"
+                ? "That game finished too quickly to verify. Take your time on the next run."
+                : data.error === "invalid_times"
+                  ? "Invalid game timestamps. Try again from a fresh match."
+                  : data.error === "moves_moveHistory_mismatch"
+                    ? "Move list mismatch. Refresh and play again."
+                    : data.error ?? `Error ${r.status}`;
       return { ok: false as const, error: msg };
     }
     await queryClient.invalidateQueries({ queryKey: leaderboardKeys.all });
@@ -314,127 +362,211 @@ export function Play() {
 
   const winCells =
     terminal?.kind === "human" || terminal?.kind === "cpu" ? terminal.cells : null;
+  const gameOver = terminal !== null;
+  const gridClass =
+    phase === "playing"
+      ? proOpen
+        ? "lg:grid lg:grid-cols-[1fr_minmax(260px,280px)] lg:items-start lg:gap-6"
+        : "lg:grid lg:grid-cols-[1fr_auto] lg:items-start lg:gap-3"
+      : "";
 
   return (
-    <div className="space-y-8">
-      <div className="glass-panel p-5 md:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="font-display text-2xl font-semibold text-white md:text-3xl">Play</h1>
-            {phase === "playing" && !terminal ? (
-              <p className="mt-1 text-sm text-white/65">
-                {busy ? "CPU is thinking…" : "Your turn — pick a column."} ·{" "}
-                <span className="capitalize text-amber-200/90">{difficulty}</span>
-              </p>
-            ) : (
-              <p className="mt-1 text-sm text-white/65">Choose a difficulty to begin.</p>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={confirmNewGame} className="btn-pill-outline">
-              <RotateCcw className="size-4" />
-              New game
-            </button>
-            <Link href="/leaderboard" className="btn-pill-outline">
-              Hall of Fame
-            </Link>
-            <Link href="/" className="rounded-full px-3 py-2 text-sm text-white/55 transition hover:text-white">
-              <Home className="mr-1 inline size-4 align-text-bottom" />
-              Home
-            </Link>
+    <div className={gridClass}>
+      <div className="min-w-0 space-y-8">
+        <div className="glass-panel p-5 md:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h1 className="font-display text-2xl font-semibold text-white md:text-3xl">Play</h1>
+              {phase === "playing" && !terminal ? (
+                <p className="mt-1 text-sm text-white/65">
+                  {busy ? "CPU is thinking…" : "Your turn — pick a column."} ·{" "}
+                  <span className="capitalize text-amber-200/90">{difficulty}</span>
+                </p>
+              ) : (
+                <p className="mt-1 text-sm text-white/65">Choose a difficulty to begin.</p>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {phase === "playing" ? (
+                <button
+                  type="button"
+                  onClick={() => setProOpen((o) => !o)}
+                  className="btn-pill-outline"
+                  aria-expanded={proOpen}
+                >
+                  Pro
+                </button>
+              ) : null}
+              <button type="button" onClick={confirmNewGame} className="btn-pill-outline">
+                <RotateCcw className="size-4" />
+                New game
+              </button>
+              <Link href="/leaderboard" className="btn-pill-outline">
+                Hall of Fame
+              </Link>
+              <Link
+                href="/"
+                className="rounded-full px-3 py-2 text-sm text-white/55 transition hover:text-white"
+              >
+                <Home className="mr-1 inline size-4 align-text-bottom" />
+                Home
+              </Link>
+            </div>
           </div>
         </div>
+
+        {phase === "pick" ? (
+          <div className="glass-panel flex flex-col gap-3 p-6 sm:flex-row sm:justify-center">
+            {(["easy", "medium", "hard"] as const).map((d) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => void startMatch(d)}
+                className="rounded-full border border-white/15 bg-white/5 px-10 py-4 text-sm font-semibold capitalize tracking-wide text-white transition hover:border-emerald-300/40 hover:bg-white/10"
+              >
+                {d}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div id="play-game-board" className="glass-panel space-y-4 p-4 sm:p-6">
+            <div className="flex flex-wrap items-center justify-center gap-3 text-sm">
+              <button
+                type="button"
+                disabled={busy || !!terminal || undoStack.length === 0}
+                onClick={handleUndo}
+                className="btn-pill-outline disabled:opacity-40"
+              >
+                <Undo2 className="size-4" aria-hidden />
+                Undo last pair
+              </button>
+              {difficulty !== "hard" ? (
+                <label className="flex cursor-pointer items-center gap-2 text-white/75">
+                  <input
+                    type="checkbox"
+                    checked={hintsOn}
+                    onChange={(e) => setHintsOn(e.target.checked)}
+                    className="rounded border-white/30 bg-black/40 text-emerald-500"
+                  />
+                  Show hints
+                </label>
+              ) : null}
+              <span className="text-xs text-white/45">Keys 1–7 · hover or focus columns</span>
+            </div>
+            <GameBoard
+              board={board}
+              onColumnClick={(c) => {
+                setFocusedCol(c);
+                void onColumnClick(c);
+              }}
+              onColumnHover={setHighlightCol}
+              disabled={busy || !!terminal}
+              winningCells={winCells}
+              highlightCol={highlightCol}
+              lastDrop={lastDrop}
+              focusedCol={focusedCol}
+              hintCol={hintsOn && difficulty !== "hard" ? hintCol : null}
+            />
+          </div>
+        )}
+
+        {phase === "playing" && !terminal ? (
+          <p className="text-center text-xs text-white/45">
+            You are red · CPU is yellow · Full columns show ×
+          </p>
+        ) : null}
+
+        {terminal && !submitOpen ? (
+          <GameOverOverlay
+            title={
+              terminal.kind === "human"
+                ? "You win"
+                : terminal.kind === "cpu"
+                  ? "CPU wins"
+                  : "Draw"
+            }
+            subtitle={
+              terminal.kind === "human"
+                ? "Submit your score to the Hall of Fame."
+                : terminal.kind === "cpu"
+                  ? "Try again with a different strategy."
+                  : "The board is full."
+            }
+            humanWon={terminal.kind === "human"}
+            showWinningLineHint={terminal.kind === "cpu"}
+            canPeekBoard={terminal.kind === "human" || terminal.kind === "cpu"}
+            shareMoves={moves}
+            shareSeed={seed}
+            onPlayAgain={resetToPick}
+            onSubmitScore={terminal.kind === "human" ? () => setSubmitOpen(true) : undefined}
+          />
+        ) : null}
+
+        {submitOpen && terminal?.kind === "human" ? (
+          <SubmitScoreOverlay onClose={() => setSubmitOpen(false)} onSubmit={submitScore} />
+        ) : null}
       </div>
 
-      {phase === "pick" ? (
-        <div className="glass-panel flex flex-col gap-3 p-6 sm:flex-row sm:justify-center">
-          {(["easy", "medium", "hard"] as const).map((d) => (
-            <button
-              key={d}
-              type="button"
-              onClick={() => void startMatch(d)}
-              className="rounded-full border border-white/15 bg-white/5 px-10 py-4 text-sm font-semibold capitalize tracking-wide text-white transition hover:border-emerald-300/40 hover:bg-white/10"
-            >
-              {d}
-            </button>
-          ))}
-        </div>
-      ) : (
-        <div id="play-game-board" className="glass-panel space-y-4 p-4 sm:p-6">
-          <div className="flex flex-wrap items-center justify-center gap-3 text-sm">
-            <button
-              type="button"
-              disabled={busy || !!terminal || undoStack.length === 0}
-              onClick={handleUndo}
-              className="btn-pill-outline disabled:opacity-40"
-            >
-              <Undo2 className="size-4" aria-hidden />
-              Undo last pair
-            </button>
-            {difficulty !== "hard" ? (
-              <label className="flex cursor-pointer items-center gap-2 text-white/75">
-                <input
-                  type="checkbox"
-                  checked={hintsOn}
-                  onChange={(e) => setHintsOn(e.target.checked)}
-                  className="rounded border-white/30 bg-black/40 text-emerald-500"
-                />
-                Show hints
-              </label>
-            ) : null}
-            <span className="text-xs text-white/45">Keys 1–7 · hover or focus columns</span>
-          </div>
-          <GameBoard
+      {phase === "playing" && proOpen ? (
+        <aside
+          aria-label="Pro panel"
+          className="hidden min-h-0 lg:sticky lg:top-6 lg:block lg:self-start"
+        >
+          <ProSidebar
             board={board}
-            onColumnClick={(c) => {
-              setFocusedCol(c);
-              void onColumnClick(c);
-            }}
-            onColumnHover={setHighlightCol}
-            disabled={busy || !!terminal}
-            winningCells={winCells}
-            highlightCol={highlightCol}
-            lastDrop={lastDrop}
-            focusedCol={focusedCol}
-            hintCol={hintsOn && difficulty !== "hard" ? hintCol : null}
+            moves={moves}
+            gameOver={gameOver}
+            difficulty={difficulty}
+            onDifficultyChange={handleProDifficulty}
+            onClose={() => setProOpen(false)}
+            showClose={false}
           />
+        </aside>
+      ) : null}
+
+      {phase === "playing" && !proOpen ? (
+        <button
+          type="button"
+          onClick={() => setProOpen(true)}
+          className="sticky top-24 hidden max-h-[420px] shrink-0 self-start rounded-2xl border border-white/15 bg-white/5 px-3 py-6 text-xs font-bold uppercase tracking-widest text-white/70 hover:bg-white/10 lg:flex lg:flex-col lg:items-center"
+          aria-label="Open Pro panel"
+        >
+          Pro
+        </button>
+      ) : null}
+
+      {phase === "playing" && proOpen ? (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/60"
+            aria-label="Close Pro panel"
+            onClick={() => setProOpen(false)}
+          />
+          <div className="absolute bottom-0 left-0 right-0 max-h-[75vh] overflow-y-auto rounded-t-3xl border border-white/15 border-b-0 bg-black/80 shadow-2xl backdrop-blur-md">
+            <ProSidebar
+              board={board}
+              moves={moves}
+              gameOver={gameOver}
+              difficulty={difficulty}
+              onDifficultyChange={handleProDifficulty}
+              onClose={() => setProOpen(false)}
+              showClose
+            />
+          </div>
         </div>
-      )}
-
-      {phase === "playing" && !terminal ? (
-        <p className="text-center text-xs text-white/45">
-          You are red · CPU is yellow · Full columns show ×
-        </p>
       ) : null}
 
-      {terminal && !submitOpen ? (
-        <GameOverOverlay
-          title={
-            terminal.kind === "human"
-              ? "You win"
-              : terminal.kind === "cpu"
-                ? "CPU wins"
-                : "Draw"
-          }
-          subtitle={
-            terminal.kind === "human"
-              ? "Submit your score to the Hall of Fame."
-              : terminal.kind === "cpu"
-                ? "Try again with a different strategy."
-                : "The board is full."
-          }
-          humanWon={terminal.kind === "human"}
-          showWinningLineHint={terminal.kind === "cpu"}
-          canPeekBoard={terminal.kind === "human" || terminal.kind === "cpu"}
-          shareMoves={moves}
-          shareSeed={seed}
-          onPlayAgain={resetToPick}
-          onSubmitScore={terminal.kind === "human" ? () => setSubmitOpen(true) : undefined}
+      {pendingDifficulty ? (
+        <ChangeDifficultyModal
+          targetDifficulty={pendingDifficulty}
+          onCancel={() => setPendingDifficulty(null)}
+          onConfirm={() => {
+            const d = pendingDifficulty;
+            setPendingDifficulty(null);
+            if (d) void startMatch(d);
+          }}
         />
-      ) : null}
-
-      {submitOpen && terminal?.kind === "human" ? (
-        <SubmitScoreOverlay onClose={() => setSubmitOpen(false)} onSubmit={submitScore} />
       ) : null}
     </div>
   );

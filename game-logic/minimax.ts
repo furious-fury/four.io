@@ -5,7 +5,8 @@ import { getOutcome } from "./win";
 
 const WIN_SCORE = 10_000_000;
 const LOSS_SCORE = -10_000_000;
-export const DEFAULT_MAX_DEPTH = 7;
+/** Search depth (plies below each root child). Lower = more beatable while still strong. */
+export const DEFAULT_MAX_DEPTH = 5;
 
 /** Prefer center columns first for move ordering (alpha-beta). */
 function orderColumns(cols: number[]): number[] {

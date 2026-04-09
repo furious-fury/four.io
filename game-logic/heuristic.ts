@@ -59,3 +59,8 @@ export function evaluateBoard(board: Board, forPlayer: Cell): number {
 
   return score;
 }
+
+/** Static score from Red’s (human) perspective; higher favors Red. Same basis as CPU leaf eval when `forPlayer` is Yellow. */
+export function evaluatePositionForRed(board: Board): number {
+  return evaluateBoard(board, HUMAN);
+}

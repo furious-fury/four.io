@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await submitScoreFromParsedBody(body);
+    const result = await submitScoreFromParsedBody(body, { reqId: id });
     if (!result.ok) {
       return withRequestId(NextResponse.json({ error: result.error }, { status: result.status }), id);
     }

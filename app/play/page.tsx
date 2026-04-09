@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { Shell } from "@/components/Shell";
 import { Play } from "@/components/play/Play";
 import { pageMetadata } from "@/lib/pageMeta";
@@ -12,7 +13,9 @@ export const metadata = pageMetadata({
 export default function PlayPage() {
   return (
     <Shell>
-      <Play />
+      <Suspense fallback={<div className="min-h-[50vh]" aria-label="Loading play" />}>
+        <Play />
+      </Suspense>
     </Shell>
   );
 }
