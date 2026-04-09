@@ -591,6 +591,7 @@ export function Play({ mode = "arcade", dailyMeta }: PlayProps = {}) {
             canPeekBoard={terminal.kind === "human" || terminal.kind === "cpu"}
             shareMoves={moves}
             shareSeed={seed}
+            shareDifficulty={difficulty}
             onPlayAgain={mode === "daily" ? restartDailyRound : resetToPick}
             onSubmitScore={terminal.kind === "human" ? () => setSubmitOpen(true) : undefined}
           />

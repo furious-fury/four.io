@@ -4,6 +4,7 @@ import { Check, Share2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import type { Difficulty } from "@/game-logic";
 import { shareReplayLink } from "@/lib/shareReplayLink";
 
 /** Above game-over (50), submit-score (60), and shell nav (~120). */
@@ -22,6 +23,8 @@ type Props = {
   /** Move list for `/replay?moves=…` sharing. */
   shareMoves: number[];
   shareSeed: number;
+  /** Included in shared replay URLs so `/replay` can run `verifyGame`. */
+  shareDifficulty?: Difficulty;
   onPlayAgain: () => void;
   onSubmitScore?: () => void;
 };
@@ -34,6 +37,7 @@ export function GameOverOverlay({
   canPeekBoard = false,
   shareMoves,
   shareSeed,
+  shareDifficulty,
   onPlayAgain,
   onSubmitScore,
 }: Props) {
@@ -52,9 +56,10 @@ export function GameOverOverlay({
     const params = new URLSearchParams();
     params.set("moves", shareMoves.join(","));
     params.set("seed", String(shareSeed));
+    if (shareDifficulty) params.set("difficulty", shareDifficulty);
     if (typeof window === "undefined") return `/replay?${params.toString()}`;
     return `${window.location.origin}/replay?${params.toString()}`;
-  }, [shareMoves, shareSeed]);
+  }, [shareMoves, shareSeed, shareDifficulty]);
 
   const shareReplay = useCallback(async () => {
     try {

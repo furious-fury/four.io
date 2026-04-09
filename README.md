@@ -9,7 +9,7 @@ Connect 4 against the CPU (Easy / Medium / Hard) with a verified global leaderbo
 - **Home:** Local W–L–D tallies per difficulty (this browser only).
 - **Daily puzzle:** One shared **Hard** seed per **UTC calendar day**; Daily leaderboard ranks by **fewest plies**, then **fastest time**; submissions verified on `POST /api/daily/scores` (separate from the Hall of Fame table).
 - **Hall of Fame:** Top 50 scores; React Query; filters **All / Easy / Medium / Hard** (ranks within the selected filter); row highlight for the last submitted display name (`sessionStorage`).
-- **Replay:** Read-only board from `/replay?moves=0,1,2` (optional `&seed=`). Invalid sequences show an error. Scores still require server verification.
+- **Replay:** `/replay?moves=…` (columns **0–6**, comma-separated). Optional `seed` and `difficulty=easy|medium|hard`. Shows outcome (Red / Yellow / draw / unfinished), move count, last drop, **winning-line** and **last-disc** highlights, a **step scrubber** (prev/next + slider), a **move list** (collapsible for long games), and **copy/share** for the replay URL. When `seed` and `difficulty` are both valid, the page runs a **client-side `verifyGame` check** against the official CPU (Hall of Fame scores are still verified **server-side**). Game-over **Share replay** links include `difficulty` so pasted URLs stay verifiable.
 - **API:** Zod on bodies and query params; `X-Request-Id` on responses. Score and game starts use **Upstash Redis** rate limits when `UPSTASH_*` is set (skipped if unset).
 
 ## Prerequisites
@@ -55,7 +55,7 @@ bunx prisma migrate deploy
 | `bun run build` | `prisma generate` + production build |
 | `bun run start` | Production server (after `build`) |
 | `bun run lint` | ESLint |
-| `bun run test:unit` | Bun tests for core rules (`game-logic/win.test.ts`) |
+| `bun run test:unit` | Bun tests (`game-logic/win.test.ts`, `lib/*` policy/puzzle/replay helpers) |
 | `bun run test:e2e` | Playwright tests in `tests/e2e` (dev server on port **5174**) |
 
 First time running E2E, install browsers if prompted:
@@ -96,7 +96,8 @@ Next.js loads env from the project directory (the repo root).
 
 - `app/` — App Router pages and `app/api/*` route handlers.
 - `components/`, `lib/`, `queries/`, `sound/` — UI and client utilities.
-- `game-logic/` — Board, win/draw, Easy/Medium/Hard CPU, `verifyGame`, scoring, `boardFromMoves` for replay.
+- `game-logic/` — Board, win/draw, Easy/Medium/Hard CPU, `verifyGame`, scoring, `boardFromMoves` / replay helpers.
+- `lib/replay-from-moves.ts` — Derives final board, outcome, and highlights for `/replay` (used by the page and scrubber).
 - `workers/` — CPU web worker for Hard difficulty.
 - `prisma/` — Schema and migrations; generated client under `generated/prisma`.
 - `public/` — Static assets.

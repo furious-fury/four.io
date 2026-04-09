@@ -3,15 +3,21 @@
 import { Board as GameBoard } from "@/components/Board";
 import type { Board } from "@/game-logic";
 
-export function ReplayBoardView({ board }: { board: Board }) {
+type Props = {
+  board: Board;
+  winningCells?: { row: number; col: number }[] | null;
+  lastDrop?: { row: number; col: number } | null;
+};
+
+export function ReplayBoardView({ board, winningCells = null, lastDrop = null }: Props) {
   return (
     <GameBoard
       board={board}
       onColumnClick={() => {}}
       disabled
-      winningCells={null}
+      winningCells={winningCells}
       highlightCol={null}
-      lastDrop={null}
+      lastDrop={lastDrop}
       hideColumnSelectors
     />
   );
