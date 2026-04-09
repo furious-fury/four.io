@@ -176,15 +176,16 @@ export function Help() {
           <li>Starting games and submitting scores are rate-limited to reduce abuse.</li>
           <li>
             <Link
-              href="/replay?moves=0,1,2,3,4,5,6"
+              href="/replay?m=0123456"
               className="text-emerald-300 underline decoration-emerald-500/50 underline-offset-2 hover:text-emerald-200"
             >
               Replay
             </Link>{" "}
-            URLs rebuild a board from a query like{" "}
-            <code className="rounded bg-white/10 px-1">?moves=0,1,2,3,4,5,6</code> (column indices 0–6 per ply, human
-            then CPU) for fun or sharing — they do <strong className="text-white/90">not</strong> prove a score by
-            themselves.
+            URLs rebuild a board from a short query like{" "}
+            <code className="rounded bg-white/10 px-1">?m=0123456</code> (one digit 0–6 per ply; shared links use{" "}
+            <code className="mx-1 rounded bg-white/10 px-1">m=</code> to keep URLs readable). Comma form{" "}
+            <code className="rounded bg-white/10 px-1">?moves=0,1,2,…</code> still works — these links do{" "}
+            <strong className="text-white/90">not</strong> prove a score by themselves.
           </li>
         </ul>
       </section>

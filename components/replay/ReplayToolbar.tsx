@@ -4,6 +4,7 @@ import { Check, Share2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Difficulty } from "@/game-logic";
+import { encodeMovesForReplayQuery } from "@/lib/replay-url-codec";
 import { shareReplayLink } from "@/lib/shareReplayLink";
 
 const TOAST_Z = 10000;
@@ -14,7 +15,7 @@ function buildReplayUrl(
   difficulty: Difficulty | null,
 ): string {
   const params = new URLSearchParams();
-  params.set("moves", moves.join(","));
+  params.set("m", encodeMovesForReplayQuery(moves));
   if (seed != null) params.set("seed", String(seed));
   if (difficulty != null) params.set("difficulty", difficulty);
   if (typeof window === "undefined") return `/replay?${params.toString()}`;

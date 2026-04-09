@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Difficulty } from "@/game-logic";
+import { encodeMovesForReplayQuery } from "@/lib/replay-url-codec";
 import { shareReplayLink } from "@/lib/shareReplayLink";
 
 /** Above game-over (50), submit-score (60), and shell nav (~120). */
@@ -20,10 +21,10 @@ type Props = {
   showWinningLineHint?: boolean;
   /** Show “View winning board” when there is a winning line (human or CPU win). */
   canPeekBoard?: boolean;
-  /** Move list for `/replay?moves=…` sharing. */
+  /** Move list for `/replay?m=…` compact sharing. */
   shareMoves: number[];
   shareSeed: number;
-  /** Included in shared replay URLs so `/replay` can run `verifyGame`. */
+  /** Included in shared replay URLs (`/replay`) together with `m` and `seed` for context. */
   shareDifficulty?: Difficulty;
   onPlayAgain: () => void;
   onSubmitScore?: () => void;
@@ -54,7 +55,7 @@ export function GameOverOverlay({
 
   const buildReplayUrl = useCallback(() => {
     const params = new URLSearchParams();
-    params.set("moves", shareMoves.join(","));
+    params.set("m", encodeMovesForReplayQuery(shareMoves));
     params.set("seed", String(shareSeed));
     if (shareDifficulty) params.set("difficulty", shareDifficulty);
     if (typeof window === "undefined") return `/replay?${params.toString()}`;

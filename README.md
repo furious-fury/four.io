@@ -9,7 +9,7 @@ Connect 4 against the CPU (Easy / Medium / Hard) with a verified global leaderbo
 - **Home:** Local W–L–D tallies per difficulty (this browser only).
 - **Daily puzzle:** One shared **Hard** seed per **UTC calendar day**; Daily leaderboard ranks by **fewest plies**, then **fastest time**; submissions verified on `POST /api/daily/scores` (separate from the Hall of Fame table).
 - **Hall of Fame:** Top 50 scores; React Query; filters **All / Easy / Medium / Hard** (ranks within the selected filter); row highlight for the last submitted display name (`sessionStorage`).
-- **Replay:** `/replay?moves=…` (columns **0–6**, comma-separated). Optional `seed` and `difficulty=easy|medium|hard`. Shows outcome (Red / Yellow / draw / unfinished), move count, last drop, **winning-line** and **last-disc** highlights, a **step scrubber** (prev/next + slider), a **move list** (collapsible for long games), and **copy/share** for the replay URL. When `seed` and `difficulty` are both valid, the page runs a **client-side `verifyGame` check** against the official CPU (Hall of Fame scores are still verified **server-side**). Game-over **Share replay** links include `difficulty` so pasted URLs stay verifiable.
+- **Replay:** `/replay?m=3332214…` — **compact** encoding: one digit **0–6** per ply via the `m` param (no commas, shorter URLs). Legacy `?moves=3,3,3` or `?moves=333` still parse. Optional `seed` and `difficulty=easy|medium|hard` are shown for context and included in shared links (same values as your game session); **Hall of Fame verification still runs only on the server.** Shows outcome (Red / Yellow / draw / unfinished), move count, last drop, **winning-line** and **last-disc** highlights, a **step scrubber**, **move list**, and **copy/share**.
 - **API:** Zod on bodies and query params; `X-Request-Id` on responses. Score and game starts use **Upstash Redis** rate limits when `UPSTASH_*` is set (skipped if unset).
 
 ## Prerequisites
@@ -98,6 +98,7 @@ Next.js loads env from the project directory (the repo root).
 - `components/`, `lib/`, `queries/`, `sound/` — UI and client utilities.
 - `game-logic/` — Board, win/draw, Easy/Medium/Hard CPU, `verifyGame`, scoring, `boardFromMoves` / replay helpers.
 - `lib/replay-from-moves.ts` — Derives final board, outcome, and highlights for `/replay` (used by the page and scrubber).
+- `lib/replay-url-codec.ts` — Parses legacy comma lists and compact `m=` digit strings; encodes shares without commas.
 - `workers/` — CPU web worker for Hard difficulty.
 - `prisma/` — Schema and migrations; generated client under `generated/prisma`.
 - `public/` — Static assets.
