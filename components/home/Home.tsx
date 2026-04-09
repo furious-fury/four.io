@@ -1,37 +1,18 @@
 "use client";
 
-import dynamic from "next/dynamic";
+import { motion } from "framer-motion";
 import Link from "next/link";
 import { useMemo } from "react";
 import { Circle, Sparkles, Trophy } from "lucide-react";
+import { useOptionalLandingParallax } from "@/components/home/LandingParallaxProvider";
 import { loadLocalStats } from "@/lib/localStats";
-
-const HomeHeroBackdrop = dynamic(
-  () => import("@/components/home/HomeHeroBackdrop").then((m) => m.HomeHeroBackdrop),
-  { ssr: false }
-);
 
 export function Home() {
   const stats = useMemo(() => loadLocalStats(), []);
+  const landingParallax = useOptionalLandingParallax();
 
-  return (
-    <div className="relative flex min-h-[calc(100dvh-8rem)] flex-col items-center justify-center overflow-hidden px-2 pb-8 pt-4 md:min-h-[calc(100dvh-9rem)]">
-      <HomeHeroBackdrop />
-      <aside className="glass-panel absolute right-0 top-0 z-10 hidden max-w-[17rem] p-4 text-left lg:block">
-        <p className="font-display text-sm font-semibold text-white">Verified leaderboard</p>
-        <p className="mt-1 text-xs leading-relaxed text-white/70">
-          Wins on Hard are checked server-side from your moves — no fake scores.
-        </p>
-        <Link
-          href="/leaderboard"
-          className="btn-pill-outline mt-4 w-full justify-center gap-2 py-2.5 text-[11px] font-bold uppercase tracking-wider"
-        >
-          <Trophy className="size-3.5 text-amber-300/90" aria-hidden />
-          Hall of Fame
-        </Link>
-      </aside>
-
-      <div className="flex max-w-2xl flex-col items-center text-center">
+  const mainColumn = (
+    <div className="flex max-w-2xl flex-col items-center text-center">
         <p className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.35em] text-emerald-200/80">
           <Sparkles className="size-3.5 text-amber-200/90" aria-hidden />
           Connect 4 · vs CPU
@@ -86,7 +67,35 @@ export function Home() {
             <span>Scores verified from move history — fair play only.</span>
           </li>
         </ul>
-      </div>
+    </div>
+  );
+
+  return (
+    <div className="relative flex min-h-[calc(100dvh-8rem)] flex-col items-center justify-center px-2 pb-8 pt-4 md:min-h-[calc(100dvh-9rem)]">
+      <aside className="glass-panel absolute right-0 top-0 z-10 hidden max-w-[17rem] p-4 text-left lg:block">
+        <p className="font-display text-sm font-semibold text-white">Verified leaderboard</p>
+        <p className="mt-1 text-xs leading-relaxed text-white/70">
+          Wins on Hard are checked server-side from your moves — no fake scores.
+        </p>
+        <Link
+          href="/leaderboard"
+          className="btn-pill-outline mt-4 w-full justify-center gap-2 py-2.5 text-[11px] font-bold uppercase tracking-wider"
+        >
+          <Trophy className="size-3.5 text-amber-300/90" aria-hidden />
+          Hall of Fame
+        </Link>
+      </aside>
+
+      {landingParallax ? (
+        <motion.div
+          className="flex w-full flex-col items-center justify-center"
+          style={{ x: landingParallax.fgX, y: landingParallax.fgY }}
+        >
+          {mainColumn}
+        </motion.div>
+      ) : (
+        mainColumn
+      )}
     </div>
   );
 }

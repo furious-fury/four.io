@@ -1,11 +1,13 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Menu, Volume2, VolumeX, X } from "lucide-react";
+import { useOptionalLandingParallax } from "@/components/home/LandingParallaxProvider";
 import { fetchLeaderboard, leaderboardKeys } from "@/queries/leaderboard";
 import { useSound } from "@/sound/SoundProvider";
 
@@ -40,6 +42,7 @@ function navMobileClass(pathname: string, href: string) {
 }
 
 export function Shell({ children }: { children: ReactNode }) {
+  const landingParallax = useOptionalLandingParallax();
   const { muted, toggleMuted } = useSound();
   const queryClient = useQueryClient();
   const pathname = usePathname();
@@ -142,10 +145,26 @@ export function Shell({ children }: { children: ReactNode }) {
   return (
     <div className="relative flex min-h-dvh flex-col">
       <div className="pointer-events-none fixed inset-0 -z-10">
-        <div
-          className="absolute inset-0 scale-105 bg-cover bg-center"
-          style={{ backgroundImage: `url(${HERO_BG})` }}
-        />
+        {landingParallax ? (
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="flex h-full w-full items-center justify-center">
+              <motion.div
+                className="h-[110vh] w-[110vw] shrink-0 bg-cover bg-center"
+                style={{
+                  backgroundImage: `url(${HERO_BG})`,
+                  x: landingParallax.bgX,
+                  y: landingParallax.bgY,
+                }}
+                aria-hidden
+              />
+            </div>
+          </div>
+        ) : (
+          <div
+            className="absolute inset-0 scale-105 bg-cover bg-center"
+            style={{ backgroundImage: `url(${HERO_BG})` }}
+          />
+        )}
         <div className="absolute inset-0 bg-gradient-to-b from-emerald-950/70 via-teal-950/50 to-black/90" />
         <div
           className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_20%,rgba(253,224,71,0.12),transparent_55%)]"
